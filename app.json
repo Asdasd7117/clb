@@ -1,27 +1,7 @@
 {
-  "name": "myapp",
+  "name": "myApp",
+  "displayName": "أهلا وسهلا",
+  "id": "com.example.myapp",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "react-native start",
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "build": "ionic build"
-  },
-  "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.72.5",
-    "@ionic/react": "^7.8.6",
-    "@ionic/react-router": "^7.8.6",
-    "react-router": "^5.3.4",
-    "react-router-dom": "^5.3.4"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "typescript": "^5.2.2"
-  },
-  "engines": {
-    "node": "18.x",
-    "npm": "10.x"
-  }
+  "description": "تطبيق Ionic / React Native بسيط يظهر رسالة أهلا وسهلا"
 }
