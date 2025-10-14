@@ -1,0 +1,110 @@
+# scrapingbee_visits_with_key.py
+# سكربت جاهز لإرسال زيارات عبر ScrapingBee مع تشغيل JS وسيناريو تمرير/انتظار
+# مفتاح ScrapingBee تم إدراجه حسب طلبك
+
+import requests
+import time
+import random
+import json
+
+# ======= مفتاح ScrapingBee (المُدخل) ========
+API_KEY = "6TTPMVVVFFWY1MB0Q0VELMTGEILKVDN82HEXPNX5R6N9J0OVWF2XU4IGKWV8TSBAR2288IYCDKR5Q816"
+# ============================================
+
+TARGET_URL = "https://btc240.netlify.app/"
+VISIT_COUNT = 200
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+]
+
+INTERNAL_PAGES = [
+    TARGET_URL,
+    # أضف صفحات داخلية هنا إن أردت بعد التأكد من وجودها
+]
+
+def build_js_scenario(min_stay=40, max_stay=60):
+    wait_time = random.randint(min_stay, max_stay)
+    wait_ms = wait_time * 1000
+    scenario = {
+        "instructions": [
+            {"wait": 3000},
+            {"scroll_y": random.randint(200, 700)},
+            {"wait": 2000},
+            {"scroll_y": random.randint(700, 1400)},
+            {"wait": wait_ms},
+            {"scroll_y": random.randint(0, 300)},
+            {"wait": 2000}
+        ]
+    }
+    return scenario, wait_time
+
+def send_visit(target_page, api_key):
+    user_agent = random.choice(USER_AGENTS)
+    js_scenario, stay_seconds = build_js_scenario(40, 60)
+    params = {
+        "api_key": api_key,
+        "url": target_page,
+        "render_js": "true",
+        "js_scenario": json.dumps(js_scenario, ensure_ascii=False),
+    }
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    }
+
+    try:
+        resp = requests.get("https://app.scrapingbee.com/api/v1/", params=params, headers=headers, timeout=stay_seconds + 60)
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        status = getattr(e.response, "status_code", "N/A")
+        text = e.response.text[:500] if getattr(e.response, "text", None) else ""
+        print(f"❌ HTTP error: {e} (status {status})\n{text}\n")
+        return False, None
+    except requests.exceptions.Timeout as e:
+        print(f"⚠️ Timeout: {e}")
+        return False, None
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Request error: {e}")
+        return False, None
+
+    cost = resp.headers.get("Spb-cost") or resp.headers.get("spb-cost")
+    if cost:
+        print(f"Request cost: {cost} credits")
+
+    body = resp.text
+    ad_markers = ["ad-", "adsbygoogle", "googlesyndication", "ads.pubmatic", "advert"]
+    ad_found = any(marker in body for marker in ad_markers)
+
+    if ad_found:
+        print("✅ Ad has been loaded")
+        print("✅✅✅ Ad successfully loaded ✅✅✅\n")
+        return True, stay_seconds
+    else:
+        snippet = body[:1000].replace("\n", " ")
+        print("⚠️ Ad not detected - response snippet:")
+        print(snippet + "\n")
+        return False, stay_seconds
+
+def run_visits(api_key, visits=200, delay_between=10):
+    success = 0
+    for i in range(1, visits + 1):
+        target = random.choice(INTERNAL_PAGES)
+        print(f"🚀 Sending visit number {i} to {target}")
+        ok, stay = send_visit(target, api_key)
+        if ok:
+            success += 1
+        extra = random.uniform(0, delay_between)
+        total_sleep = (stay or 0) + extra
+        print(f"⏱️ Waiting {total_sleep:.1f}s before next visit\n")
+        time.sleep(total_sleep)
+    print(f"✅ Completed {visits} visits — {success} had ad markers detected.")
+
+if __name__ == "__main__":
+    if not API_KEY.strip():
+        print("⚠️ Please set your ScrapingBee API key in the API_KEY variable before running.")
+    else:
+        run_visits(API_KEY, visits=VISIT_COUNT, delay_between=10)
